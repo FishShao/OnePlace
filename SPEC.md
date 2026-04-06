@@ -1,4 +1,3 @@
-# SPEC.md
 
 ## Project Name
 OnePlace
