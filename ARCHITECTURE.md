@@ -1,217 +1,284 @@
-# ARCHITECTURE
-## Project: Pocket — Personal Knowledge Aggregator
+# ARCHITECTURE.md
+## OnePlace — Personal Knowledge Aggregator
+**Developer:** Sijia Shao  
 **Client:** Davi Dai  
-**Developer:** Sijia Shao
-**Estimated Build Time:** 40–60 hours  
+**Submitted for:** PR #1 / Check-in 1 (April 19, 2026)  
 
 ---
 
-## 1. Problem Summary
-
-Users scatter saved information (links, notes, recommendations) across WeChat, Apple Notes, RedNote, TikTok, and more. When they want to retrieve something, they can't remember where they saved it. The solution is a **single inbox** that accepts manual text input, auto-categorizes it with AI, and makes everything searchable in one place.
-
----
-
-## 2. Tech Stack
-
-### Recommended: Next.js 14 (App Router) + Supabase
+## 1. Tech Stack (Finalized)
 
 | Layer | Choice | Justification |
 |---|---|---|
-| **Frontend** | Next.js 14 (App Router) | Full-stack React with server components; fast to build; great DX with Supabase |
-| **Database** | Supabase (PostgreSQL) | Free tier is generous; built-in full-text search; real-time subscriptions for free; Row Level Security (RLS) for auth |
-| **Auth** | Supabase Auth | Magic link or Google OAuth; zero-config; integrates directly with RLS |
-| **AI categorization** | Claude API (`claude-haiku-3-5`) | Fast, cheap, accurate for short text classification; ~$0.001 per save |
-| **Styling** | Tailwind CSS | Utility-first; pairs well with Next.js; fast iteration |
-| **Deployment** | Vercel | One-click Next.js deployment; free tier; preview URLs on every push |
+| **Frontend** | React 18 + Vite | Fast dev server, component-based — ideal for a kanban board with dynamic card state |
+| **Styling** | Tailwind CSS | Utility-first, great for responsive card layouts; avoids custom CSS overhead |
+| **Backend / Database** | Firebase (Firestore + Auth) | As specified; real-time listeners simplify card move UX; no server to manage |
+| **AI** | Claude API (`claude-haiku-4-5`) | Fast and cheap for single-pass categorization + retrieval; handles bilingual (EN/ZH) input reliably |
+| **Deployment** | Firebase Hosting | Co-located with Firestore; single `firebase deploy` ships both frontend and rules |
+| **State Management** | React Context + `useReducer` | Sufficient for this scale; avoids Redux complexity |
 
-### Why not Python + Streamlit?
-Streamlit is great for data prototypes but produces a less polished user experience and is harder to make mobile-friendly. Since users will likely paste content from phones, a responsive web app (Next.js) is the right call.
-
-### Why not a native mobile app?
-Out of scope for 40–60 hours. A responsive PWA (Progressive Web App) via Next.js gives a near-native mobile experience with "Add to Home Screen" support.
+### Why Claude over OpenAI?
+Both work. Claude Haiku is preferred because the prompt needs to handle bilingual (English/Chinese) input reliably, and Claude's models handle mixed-language text classification with fewer errors on short snippets.
 
 ---
 
-## 3. Data Model
+## 2. Data Model (Firestore)
 
-### Supabase / PostgreSQL
+Firestore is a document-oriented NoSQL database. The model mirrors that structure.
 
-#### Table: `items`
-The single core table. Intentionally minimal.
+### Collection: `users/{userId}/items`
 
-```sql
-CREATE TABLE items (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  content     TEXT NOT NULL,                    -- The raw saved text
-  title       TEXT,                             -- Optional user-provided or AI-extracted title
-  category    TEXT,                             -- AI-suggested: 'movie', 'restaurant', 'task', 'place', 'note', etc.
-  tags        TEXT[],                           -- Optional user-added tags
-  source_hint TEXT,                             -- Where it came from: 'WeChat', 'RedNote', 'manual', etc.
-  url         TEXT,                             -- Optional link if the content contains one
-  is_done     BOOLEAN DEFAULT FALSE,            -- For task-type items (checkbox)
-  created_at  TIMESTAMPTZ DEFAULT now(),
-  updated_at  TIMESTAMPTZ DEFAULT now(),
-  -- Full-text search index
-  search_vector TSVECTOR GENERATED ALWAYS AS (
-    to_tsvector('english', coalesce(title, '') || ' ' || content)
-  ) STORED
-);
-
--- Indexes
-CREATE INDEX items_user_id_idx ON items(user_id);
-CREATE INDEX items_category_idx ON items(category);
-CREATE INDEX items_search_idx ON items USING GIN(search_vector);
-CREATE INDEX items_created_at_idx ON items(created_at DESC);
-
--- Row Level Security: users only see their own items
-ALTER TABLE items ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users own their items"
-  ON items FOR ALL
-  USING (auth.uid() = user_id);
-```
-
-#### Why only one table?
-The pitch explicitly asks for 1–2 tables. A `categories` lookup table would add no real value since categories are a flexible, AI-generated string. If tags evolve in v2, a `tags` junction table could be added later. For now, a PostgreSQL `TEXT[]` array for tags is sufficient and avoids a join.
-
-#### Optional v2 table: `categories` (not in MVP)
-If users want to manage their own custom categories, a `user_categories` table can be added later.
-
----
-
-## 4. Application Pages (2–3 Views)
-
-### View 1: `/` — Inbox / Feed (Home)
-- List of all saved items, sorted by `created_at DESC`
-- Filter bar: All | Movie | Restaurant | Task | Place | Note | ...
-- Search bar (full-text search via Supabase `search_vector`)
-- Each card shows: category badge, content preview, source hint, date
-- Tap to expand / mark done (for tasks)
-
-### View 2: `/new` — Save Item (Add)
-- Large textarea for pasting content
-- Optional fields: title, source hint, URL
-- "Save" button → triggers AI categorization in the background
-- AI badge appears on card showing suggested category (user can override)
-
-### View 3: `/item/[id]` — Item Detail
-- Full content view
-- Edit category, tags, title
-- Delete item
-- Mark as done (if task)
-
----
-
-## 5. Agentic Engineering Plan
-
-### AI Feature: Auto-Categorization
-
-The AI feature is a **fire-and-refine** pattern: save first, categorize async, let user override.
-
-#### Flow
+Each document represents one saved item.
 
 ```
-User pastes text → Save to DB with category = null
-                 → Optimistic UI shows "Categorizing..."
-                 → POST /api/categorize { itemId, content }
-                 → Server calls Claude Haiku API
-                 → Claude returns { category, title? }
-                 → Update item in DB
-                 → UI updates card with category badge
+items/{itemId}
+├── content       : string       // Raw pasted or typed text
+├── title         : string?      // Short AI-extracted label, or user-edited
+├── section       : string       // "note" | "link" | "account" | "document" |
+│                                //   "movie_tv" | "restaurant_place" | "task" | "other"
+│                                //   OR a custom section name (user-created)
+├── sourceLabel   : string?      // "WeChat" | "RedNote" | "Notes" | "manual" | etc.
+├── url           : string?      // Extracted URL if content contains one
+├── isDone        : boolean      // For task items; default false
+├── createdAt     : Timestamp
+└── updatedAt     : Timestamp
 ```
 
-#### API Route: `POST /api/categorize`
+### Collection: `users/{userId}/sections`
 
-```typescript
-// app/api/categorize/route.ts
-import Anthropic from "@anthropic-ai/sdk";
+Stores user-created custom sections. The 8 default sections are hardcoded in the frontend and do not need DB entries.
 
-const CATEGORIES = ["movie", "tv_show", "restaurant", "place", "task", "book", "product", "note"];
+```
+sections/{sectionId}
+├── name          : string       // Display name
+├── color         : string?      // Optional hex color for the card header
+└── createdAt     : Timestamp
+```
 
-export async function POST(req: Request) {
-  const { itemId, content } = await req.json();
+### Default Sections (hardcoded, not stored in DB)
 
-  const client = new Anthropic();
-  const message = await client.messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 100,
-    messages: [{
-      role: "user",
-      content: `Classify this saved text into exactly one category.
-Categories: ${CATEGORIES.join(", ")}
-Text: "${content.slice(0, 500)}"
-Respond with JSON only: { "category": "<category>", "title": "<short title or null>" }`
-    }]
-  });
+| Key | Display Name |
+|---|---|
+| `note` | Note |
+| `link` | Link |
+| `account` | Account Info |
+| `document` | Document |
+| `movie_tv` | Movie / TV |
+| `restaurant_place` | Restaurant / Place |
+| `task` | Task / Reminder |
+| `other` | Other |
 
-  const result = JSON.parse(message.content[0].text);
-  
-  // Update item in Supabase
-  await supabase.from("items").update(result).eq("id", itemId);
-  
-  return Response.json(result);
+### Firestore Security Rules
+
+```js
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
 }
 ```
 
-#### Why Haiku, not Sonnet?
-- Categorizing a short text snippet is a simple classification task
-- Haiku is ~10x cheaper and ~3x faster than Sonnet for this use case
-- Accuracy for single-label classification on short text is equivalent
+Users can only read and write their own documents. No cross-user data access.
 
 ---
 
-## 6. Core User Flow (End-to-End)
+## 3. Application Views
+
+### View 1: Board (`/`)
+- Kanban-style layout: 8 default section columns + user custom columns
+- Each column renders its `items` filtered by `section`, ordered by `createdAt DESC`
+- Cards show: title, content preview, source label badge, URL chip (if any), done checkbox (if task)
+- Drag-and-drop (or move button) to reassign a card to a different section
+- "+" / chat button → opens Chat Input Panel
+
+### View 2: Chat Input Panel (slide-over or modal)
+- Single textarea — the primary input UX (same as messaging an AI assistant)
+- Optional source label selector (WeChat, RedNote, Notes, Manual, Other)
+- Submit → auto-detects intent: **save** or **query**
+- Returns: category badge confirmation (save) or plain-language answer + highlighted cards (query)
+
+### View 3: Item Detail (inline expand or modal)
+- Full content view
+- Edit title, content, section, source label
+- Delete item
+- Mark done (task items only)
+
+---
+
+## 4. Agentic Engineering Plan
+
+### 4.1 Intent Detection (Client-Side, No AI)
+
+```typescript
+// utils/intentDetector.ts
+export function detectIntent(text: string): "save" | "query" {
+  const trimmed = text.trim();
+  const queryPatterns = [
+    /\?$/,
+    /^(what|which|where|show|find|list|do i have|have i saved)/i,
+    /^(什么|哪些|找|显示|列出|我有没有|我存了)/
+  ];
+  return queryPatterns.some(p => p.test(trimmed)) ? "query" : "save";
+}
+```
+
+This keeps the fast path (save) instant and avoids an extra AI call just to detect intent.
+
+### 4.2 Save + Categorize Flow
+
+The AI categorizes **after** save, keeping latency invisible.
 
 ```
-1. User opens app on phone → sees their feed (View 1)
-2. User copies text from WeChat / RedNote
-3. Taps "+" → opens View 2
-4. Pastes text, optionally adds source hint ("from RedNote")
-5. Taps "Save"
-6. Item appears instantly in feed with "…" badge
-7. 1–2 seconds later, badge updates to "🎬 Movie"
-8. User can search "Italian movie" next week and find it instantly
+User submits text in ChatPanel
+  │
+  ├── detectIntent() → "save"
+  │
+  ├── 1. Write item to Firestore immediately
+  │       { content, section: "other", title: null, sourceLabel, createdAt }
+  │
+  ├── 2. Card appears instantly under "Other" with a spinner badge
+  │
+  ├── 3. Call claude.categorize(content, customSections)
+  │       → Claude returns { section, title, url? }
+  │
+  └── 4. Update Firestore item with { section, title, url }
+          Card animates from "Other" to correct column ✓
+```
+
+### 4.3 Categorization Prompt
+
+```
+You are a personal information organizer. The user has just saved the following text.
+
+SECTIONS: note, link, account, document, movie_tv, restaurant_place, task, other
+CUSTOM SECTIONS (user-defined): {{customSections}}
+
+TEXT: "{{content}}"
+
+Instructions:
+1. Pick the single most appropriate section from the list above.
+2. Extract a short title (max 8 words). If the text is in Chinese, the title should also be in Chinese.
+3. If the text contains a URL, extract it.
+4. Respond with JSON only — no explanation, no markdown:
+   { "section": "...", "title": "...", "url": "..." }
+```
+
+**Model:** `claude-haiku-4-5` | **Max tokens:** 150 | **Cost:** ~$0.001/save
+
+### 4.4 Retrieval Flow
+
+```
+User submits text in ChatPanel
+  │
+  ├── detectIntent() → "query"
+  │
+  ├── 1. Fetch user's 200 most recent items from Firestore
+  │       (trim each item's content to 200 chars for payload efficiency)
+  │
+  ├── 2. Call claude.retrieve(query, itemsJson)
+  │       → Claude returns { answer, matchedIds[] }
+  │
+  └── 3. Render answer text in chat panel
+          Highlight matching cards on the board
+```
+
+### 4.5 Retrieval Prompt
+
+```
+You are a personal knowledge assistant. The user wants to find something they saved.
+
+USER QUERY: "{{query}}"
+
+SAVED ITEMS (JSON):
+{{itemsJson}}
+
+Instructions:
+1. Answer the user's question conversationally (1–3 sentences).
+   Match the language of the user's query (English or Chinese).
+2. Return the IDs of all matching items.
+3. Respond with JSON only — no explanation, no markdown:
+   { "answer": "...", "matchedIds": ["id1", "id2"] }
+```
+
+**Model:** `claude-haiku-4-5` | **Max tokens:** 500  
+**Context ceiling check:** 200 items × 200 chars ≈ 40k chars — well within Haiku's 200k token window.
+
+---
+
+## 5. Project Structure
+
+```
+oneplace/
+├── SPEC.md
+├── ARCHITECTURE.md          ← this file
+├── README.md
+├── firebase.json
+├── firestore.rules
+├── .env.local               ← ANTHROPIC_API_KEY (never committed)
+└── src/
+    ├── main.tsx
+    ├── App.tsx
+    ├── firebase.ts           ← Firebase init (Auth + Firestore)
+    ├── api/
+    │   └── claude.ts         ← categorize() and retrieve() wrappers
+    ├── components/
+    │   ├── Board.tsx          ← Kanban board layout
+    │   ├── SectionColumn.tsx  ← One column per section
+    │   ├── ItemCard.tsx       ← Individual card
+    │   ├── ChatPanel.tsx      ← Save + query input (slide-over)
+    │   ├── ItemDetail.tsx     ← Edit/view modal
+    │   └── SourceBadge.tsx    ← Small source label chip
+    ├── hooks/
+    │   ├── useItems.ts        ← Firestore real-time listener
+    │   └── useSections.ts     ← Custom sections listener
+    ├── store/
+    │   └── boardContext.tsx   ← React Context + useReducer
+    ├── types/
+    │   └── index.ts           ← Item, Section TypeScript types
+    └── utils/
+        └── intentDetector.ts  ← save vs. query heuristic
 ```
 
 ---
 
-## 7. Build Plan (40–60 Hours)
+## 6. Build Milestones (Mapped to Agreed Timeline)
 
-| Phase | Tasks | Hours |
-|---|---|---|
-| **Setup** | Next.js init, Supabase project, auth config, Vercel deploy | 4h |
-| **DB & Auth** | Schema migration, RLS policies, login page (magic link) | 4h |
-| **Feed (View 1)** | Item list, category filter, search, responsive layout | 10h |
-| **Save (View 2)** | Add item form, optimistic UI, source hint selector | 6h |
-| **AI Categorization** | `/api/categorize` route, Claude integration, badge UI | 6h |
-| **Item Detail (View 3)** | Full view, edit, delete, mark done | 6h |
-| **Polish** | Empty states, loading skeletons, mobile tweaks, PWA manifest | 6h |
-| **Testing & Deploy** | E2E smoke tests, Vercel production deploy, final QA | 4h |
-| **Buffer** | Bug fixes, client feedback, scope changes | 8h |
-| **Total** | | **54h** |
+### ✅ Check-in 1 — Week 3 (April 19) — THIS PR
+- [x] ARCHITECTURE.md submitted
+- [x] Tech stack finalized: React + Vite + Firebase + Claude Haiku
+- [x] Data model defined (2 Firestore collections)
+- [x] Development environment set up (Firebase project init, `.env.local`)
 
----
+### 📌 Check-in 2 — Week 6 (May 10)
+- [ ] Firebase Auth (Google login) working
+- [ ] Firestore rules deployed
+- [ ] `ChatPanel` saves items to Firestore
+- [ ] Claude categorization routes items to correct section
+- [ ] `Board` renders saved cards in real time via Firestore listener
 
-## 8. Out of Scope (MVP)
-
-- Import from WeChat / RedNote APIs (no public APIs available; manual paste is the v1 UX)
-- Browser extension for one-click saving (v2)
-- Sharing collections with others (v2)
-- Offline support beyond PWA cache (v2)
-- Bulk import from CSV or other exports (v2)
+### 📌 Check-in 3 — Week 9 (May 31)
+- [ ] Natural language retrieval through chat input
+- [ ] Move cards / drag-and-drop to reassign section
+- [ ] Add and rename custom sections
+- [ ] Edit + delete items in `ItemDetail`
+- [ ] Deployed to Firebase Hosting with public URL
+- [ ] All GitHub Issues closed
 
 ---
 
-## 9. Key Risks & Mitigations
+## 7. Key Risks & Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Users forget to use the app | PWA home screen install + share-sheet intent handler (v1.5) |
-| AI miscategorizes content | Category is always editable; shown as a "suggestion" badge |
-| Supabase free tier limits (500MB, 50k rows) | More than sufficient for a personal-use MVP; upgrade path is straightforward |
-| Search quality for Chinese/mixed text | `tsvector` works best for English; for Chinese content, fall back to `ILIKE` search on `content` column |
+| AI categorization latency feels slow | Optimistic UI: card appears immediately under "Other", animates to correct section after AI responds (~1s) |
+| Retrieval over many items is slow | Cap payload at 200 most recent items; add section-hint prefix detection to filter before calling Claude |
+| Chinese / English mixed input | Claude Haiku handles bilingual input; title is returned in the same language as the input content |
+| API key exposed in client bundle | Key is in `.env.local` only; for production, proxy calls through a Firebase Cloud Function |
+| Retrieval answer quality | Prompt instructs Claude to match the query language; tested against WeChat-style pastes and short Chinese phrases |
 
 ---
 
-*Architecture version 1.0 — subject to revision after kickoff call.*
+*ARCHITECTURE.md v1.0 — Sijia Shao — April 2026*
