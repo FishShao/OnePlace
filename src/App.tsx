@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import { ChatPanel } from './components/ChatPanel'
-import { Board } from './components/Board'
 
 const C = '#2B2BE0'
 const BG = '#E8E4DF'
@@ -57,49 +57,52 @@ function MushroomDoodle() {
 }
 
 function App() {
+  const [active, setActive] = useState(false)
+
   return (
     <div style={{ minHeight: '100svh', background: BG, display: 'flex', flexDirection: 'column' }}>
-      <main
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingBottom: '240px',
-          paddingInline: '24px',
-        }}
-      >
-        <MushroomDoodle />
-        <h1
+      {!active && (
+        <main
           style={{
-            fontSize: '19px',
-            letterSpacing: '0.16em',
-            fontWeight: 300,
-            color: C,
-            marginTop: '32px',
-            marginBottom: '12px',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingBottom: '240px',
+            paddingInline: '24px',
           }}
         >
-          save anything, instantly
-        </h1>
-        <p
-          style={{
-            fontSize: '12px',
-            color: C,
-            opacity: 0.55,
-            letterSpacing: '0.08em',
-            maxWidth: '340px',
-            lineHeight: 1.7,
-            textAlign: 'center',
-          }}
-        >
-          paste a link, type a note, or describe a task — ai will sort it for you
-        </p>
-      </main>
+          <MushroomDoodle />
+          <h1
+            style={{
+              fontSize: '19px',
+              letterSpacing: '0.16em',
+              fontWeight: 300,
+              color: C,
+              marginTop: '32px',
+              marginBottom: '12px',
+            }}
+          >
+            save anything, instantly
+          </h1>
+          <p
+            style={{
+              fontSize: '12px',
+              color: C,
+              opacity: 0.55,
+              letterSpacing: '0.08em',
+              maxWidth: '340px',
+              lineHeight: 1.7,
+              textAlign: 'center',
+            }}
+          >
+            paste a link, type a note, or describe a task — ai will sort it for you
+          </p>
+        </main>
+      )}
 
-      <Board />
-      <ChatPanel />
+      <ChatPanel onActivityChange={setActive} />
     </div>
   )
 }

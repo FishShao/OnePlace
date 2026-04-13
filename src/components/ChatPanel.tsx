@@ -37,13 +37,22 @@ interface PendingConfirmation {
   summary: string
 }
 
-export function ChatPanel() {
+interface Props {
+  onActivityChange: (active: boolean) => void
+}
+
+export function ChatPanel({ onActivityChange }: Props) {
   const [content, setContent] = useState('')
   const [userNote, setUserNote] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState<PendingConfirmation | null>(null)
+  const savedContents = useRef<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    onActivityChange(messages.length > 0 || content.trim() !== '')
+  }, [messages.length, content])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -56,6 +65,13 @@ export function ChatPanel() {
   async function handleSubmit() {
     const trimmedContent = content.trim()
     if (!trimmedContent || loading) return
+
+    if (savedContents.current.has(trimmedContent)) {
+      addMessage('assistant', `already saved this one.`)
+      setContent('')
+      setUserNote('')
+      return
+    }
 
     const displayText = userNote.trim()
       ? `${trimmedContent}\n\n note: ${userNote.trim()}`
@@ -83,6 +99,7 @@ export function ChatPanel() {
         )
       } else {
         await saveItem(trimmedContent, userNote.trim(), result.section, result.title, result.summary)
+        savedContents.current.add(trimmedContent)
         addMessage('assistant', `saved to **${SECTION_LABELS[result.section]}** as "${result.title}".`)
       }
     } catch (err) {
@@ -100,6 +117,7 @@ export function ChatPanel() {
 
     try {
       await saveItem(pending.content, pending.userNote, chosenSection, pending.title, pending.summary)
+      savedContents.current.add(pending.content)
       addMessage('assistant', `saved to **${SECTION_LABELS[chosenSection]}** as "${pending.title}".`)
     } catch (err) {
       console.error(err)
