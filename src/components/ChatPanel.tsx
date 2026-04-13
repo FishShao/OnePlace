@@ -135,31 +135,25 @@ export function ChatPanel({ onActivityChange }: Props) {
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        background: BG,
-        maxHeight: '60vh',
-      }}
-    >
-      {/* message history */}
+    <>
+      {/* message history — full-viewport fixed container so scroll always reaches the top */}
       {messages.length > 0 && (
         <div
           style={{
-            flex: 1,
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: '148px',
             overflowY: 'auto',
-            padding: '24px 32px 8px',
+            background: BG,
+            padding: '32px 32px 28px',
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
-            minHeight: 0,
           }}
         >
+          <div style={{ flex: 1 }} />
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -178,13 +172,15 @@ export function ChatPanel({ onActivityChange }: Props) {
                   color: C,
                   opacity: msg.role === 'error' ? 0.45 : 1,
                   border: `1px solid ${msg.role === 'user' ? C : 'rgba(43,43,224,0.35)'}`,
+                  background: msg.role === 'assistant' ? 'rgba(43,43,224,0.07)' : 'transparent',
                   borderRadius: '3px',
                   padding: '8px 14px',
                   textAlign: 'left',
                 }}
                 dangerouslySetInnerHTML={{
                   __html: msg.text
-                    .replace(/\*\*(.+?)\*\*/g, '<em>$1</em>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/"([^"]+)"/g, '<strong>"$1"</strong>')
                     .replace(/\n/g, '<br />'),
                 }}
               />
@@ -243,13 +239,16 @@ export function ChatPanel({ onActivityChange }: Props) {
         </div>
       )}
 
-      {/* input area */}
+      {/* input area — always fixed at bottom */}
       <div
         style={{
-          flexShrink: 0,
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
           padding: '18px 32px 28px',
           background: BG,
-          borderTop: messages.length > 0 ? `1px solid rgba(43, 43, 224, 0.12)` : 'none',
+          borderTop: `1px solid rgba(43, 43, 224, 0.15)`,
         }}
       >
         <textarea
@@ -313,16 +312,16 @@ export function ChatPanel({ onActivityChange }: Props) {
             onClick={handleSubmit}
             disabled={loading || !content.trim()}
             style={{
-              background: 'none',
+              background: loading || !content.trim() ? 'rgba(43,43,224,0.25)' : C,
               border: 'none',
-              padding: 0,
+              borderRadius: '4px',
+              padding: '7px 18px',
               cursor: content.trim() && !loading ? 'pointer' : 'default',
               fontFamily: FONT,
               fontSize: '13px',
-              color: C,
+              color: '#fff',
               letterSpacing: '0.12em',
               textTransform: 'lowercase',
-              opacity: loading || !content.trim() ? 0.25 : 1,
               flexShrink: 0,
             }}
           >
@@ -342,6 +341,6 @@ export function ChatPanel({ onActivityChange }: Props) {
           enter to save · shift+enter for new line
         </p>
       </div>
-    </div>
+    </>
   )
 }
