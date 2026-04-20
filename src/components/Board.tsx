@@ -1,5 +1,5 @@
 import { useItems } from '../hooks/useItems'
-import { ItemCard } from './ItemCard'
+import { SectionColumn } from './SectionColumn'
 import type { Section } from '../api/claude'
 
 const C = '#2B2BE0'
@@ -10,7 +10,7 @@ const SECTION_LABELS: Record<Section, string> = {
   account: 'account',
   document: 'document',
   movie_tv: 'movie / tv',
-  restaurant_place: 'restaurant / place',
+  restaurant_place: 'restaurant',
   task: 'task',
   other: 'other',
 }
@@ -20,46 +20,75 @@ const ALL_SECTIONS: Section[] = [
 ]
 
 export function Board() {
-  const { items, loading } = useItems()
-
-  if (loading || items.length === 0) return null
+  const { items, loading, highlightedIds } = useItems()
 
   const bySection = Object.fromEntries(
     ALL_SECTIONS.map((s) => [s, items.filter((item) => item.section === s)])
   ) as Record<Section, typeof items>
 
-  const activeSections = ALL_SECTIONS.filter((s) => bySection[s].length > 0)
-
   return (
     <div
       style={{
-        paddingInline: '32px',
-        paddingTop: '64px',
-        paddingBottom: '32px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: '48px 40px',
+        height: '100svh',
+        overflowY: 'auto',
+        paddingInline: '48px',
+        paddingTop: '56px',
+        paddingBottom: '56px',
+        background: '#F5F2EE',
       }}
     >
-      {activeSections.map((section) => (
-        <div key={section}>
-          <p
-            style={{
-              fontSize: '11px',
-              color: C,
-              opacity: 0.4,
-              letterSpacing: '0.14em',
-              marginBottom: '20px',
-              textTransform: 'lowercase',
-            }}
-          >
-            {SECTION_LABELS[section]}
-          </p>
-          {bySection[section].map((item) => (
-            <ItemCard key={item.id} item={item} />
+      <h1
+        style={{
+          fontSize: '13px',
+          color: C,
+          letterSpacing: '0.22em',
+          fontWeight: 300,
+          marginBottom: '4px',
+        }}
+      >
+        oneplace
+      </h1>
+      <p
+        style={{
+          fontSize: '11px',
+          color: C,
+          opacity: 0.4,
+          letterSpacing: '0.1em',
+          marginBottom: '48px',
+        }}
+      >
+        everything you saved, one quiet place
+      </p>
+
+      {loading ? (
+        <p
+          style={{
+            fontSize: '11px',
+            color: C,
+            opacity: 0.35,
+            letterSpacing: '0.1em',
+          }}
+        >
+          loading…
+        </p>
+      ) : (
+        <div
+          style={{
+            columnWidth: '240px',
+            columnGap: '56px',
+          }}
+        >
+          {ALL_SECTIONS.map((section) => (
+            <SectionColumn
+              key={section}
+              section={section}
+              label={SECTION_LABELS[section]}
+              items={bySection[section]}
+              highlightedIds={highlightedIds}
+            />
           ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import type { Section } from '../api/claude'
+
+const HIGHLIGHT_MS = 60_000
 
 interface SavedItemWrite {
   content: string
@@ -25,22 +27,63 @@ export interface SavedItem {
 export function useItems() {
   const [items, setItems] = useState<SavedItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set())
+  const seenIds = useRef<Set<string>>(new Set())
+  const firstSnapshot = useRef(true)
+  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   useEffect(() => {
     const q = query(collection(db, 'items'), orderBy('createdAt', 'desc'))
     const unsub = onSnapshot(q, (snap) => {
-      setItems(
-        snap.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<SavedItem, 'id'>),
-        }))
-      )
+      const next: SavedItem[] = snap.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<SavedItem, 'id'>),
+      }))
+
+      if (firstSnapshot.current) {
+        next.forEach((item) => seenIds.current.add(item.id))
+        firstSnapshot.current = false
+      } else {
+        const freshIds: string[] = []
+        next.forEach((item) => {
+          if (!seenIds.current.has(item.id)) {
+            seenIds.current.add(item.id)
+            freshIds.push(item.id)
+          }
+        })
+        if (freshIds.length > 0) {
+          setHighlightedIds((prev) => {
+            const copy = new Set(prev)
+            freshIds.forEach((id) => copy.add(id))
+            return copy
+          })
+          freshIds.forEach((id) => {
+            const t = setTimeout(() => {
+              setHighlightedIds((prev) => {
+                if (!prev.has(id)) return prev
+                const copy = new Set(prev)
+                copy.delete(id)
+                return copy
+              })
+              timers.current.delete(id)
+            }, HIGHLIGHT_MS)
+            timers.current.set(id, t)
+          })
+        }
+      }
+
+      setItems(next)
       setLoading(false)
     })
-    return unsub
+
+    return () => {
+      unsub()
+      timers.current.forEach((t) => clearTimeout(t))
+      timers.current.clear()
+    }
   }, [])
 
-  return { items, loading }
+  return { items, loading, highlightedIds }
 }
 
 export async function saveItem(
