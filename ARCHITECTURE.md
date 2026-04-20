@@ -119,7 +119,6 @@ export function detectIntent(text: string): "save" | "query" {
   const queryPatterns = [
     /\?$/,
     /^(what|which|where|show|find|list|do i have|have i saved)/i,
-    /^(什么|哪些|找|显示|列出|我有没有|我存了)/
   ];
   return queryPatterns.some(p => p.test(trimmed)) ? "query" : "save";
 }
