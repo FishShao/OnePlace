@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  font-family: 'Overpass Mono', 'Courier New', Courier, monospace;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: #2B2BE0;
+  background: #E8E4DF;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-transform: lowercase;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #E8E4DF;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+input, textarea, button, select {
+  font-family: 'Overpass Mono', 'Courier New', Courier, monospace;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+}
+
+input::placeholder, textarea::placeholder {
+  text-transform: lowercase;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+  font-weight: 300;
+}
+
+strong {
+  font-weight: 800;
+}

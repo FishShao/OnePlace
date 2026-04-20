@@ -1,114 +1,73 @@
-# OnePlace
+# React + TypeScript + Vite
 
-**Save and retrieve your scattered information through a single conversational interface.**
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## Overview
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-Many people save useful content across different apps — WeChat self-chat, Notes, Xiaohongshu, browsers, and documents. The problem is not that people don't save information. The problem is that it's fragmented, stored in inconsistent formats, and nearly impossible to find later.
+## React Compiler
 
-OnePlace solves this with a chat-style input — just like messaging an AI assistant. Paste a link, jot a thought, or describe what you're saving. OnePlace understands it, categorizes it automatically, and organizes it on a visual kanban board. When you need something back, just ask.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
----
+## Expanding the ESLint configuration
 
-## Features (MVP)
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-- **Chat-style input** — type or paste content the same way you'd message ChatGPT; add a note for context if needed
-- **AI auto-categorization** — OnePlace figures out what you're saving and puts it in the right board section automatically
-- **Natural language retrieval** — ask "what restaurants did I save?" and get an answer instantly
-- **Kanban board** — all your saved content displayed visually across 8 default sections
-- **Custom board sections** — create new sections that fit your own organization style
-- **Move cards** — manually reassign cards if the AI got it wrong
-- **Edit cards** — update content, source label, or section at any time
-- **Source labels** — small, unobtrusive tags showing where each item came from
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
----
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-## Default Board Sections
-
-| Section | Example content |
-|---------|----------------|
-| Note | Quick thoughts, reminders, ideas |
-| Link | URLs and bookmarks |
-| Account Info | Login-related details |
-| Document | File references and doc notes |
-| Movie / TV | Streaming recommendations |
-| Restaurant / Place | Cafés, restaurants, places to visit |
-| Task / Reminder | Things to do |
-| Other | Anything that doesn't fit elsewhere |
-
----
-
-## Tech Stack
-
-| Layer | Choice |
-|-------|--------|
-| Frontend | React |
-| Backend / Database | Firebase |
-| AI | LLM API (OpenAI or Claude) for categorization and retrieval |
-
----
-
-## Team
-
-| Role | Name |
-|------|------|
-| Proposer (Client) | Davi Dai |
-| Developer | Sijia Shao |
-
-**Agreed Development Fee:** 15 GIX Bucks
-
----
-
-## Timeline
-
-The project runs over 10 weeks (April – June 2026). The proposer and developer have agreed on the following progress check-in points:
-
-### ✅ Week 1 — Project Kickoff (April 5, 2026)
-- Proposer publishes `SPEC.md` and GitHub Issues
-- Developer matched and fee negotiated
-- Repository set up
-
-### 📌 Check-in 1 — Week 3 (April 19, 2026)
-**Required developer progress:**
-- `ARCHITECTURE.md` submitted and reviewed via PR #1
-- Tech stack finalized
-- Data model defined
-- Development environment set up
-
-### 📌 Check-in 2 — Week 6 (May 10, 2026)
-**Required developer progress:**
-- Chat input functional — user can submit content and it saves to Firebase
-- AI categorization working — content routed to correct board section
-- Kanban board renders saved cards
-
-### 📌 Check-in 3 — Week 9 (May 31, 2026)
-**Required developer progress:**
-- Natural language retrieval working through chat input
-- Move cards and custom sections implemented
-- App deployed and accessible via public URL
-- All GitHub Issues closed or addressed
-
-### 🎯 Week 10 — Demo Day (June 2026)
-- Final presentation
-- GIX Bucks investment round
-
----
-
-## Repository Structure
-
-```
-oneplace/
-├── SPEC.md           # Full project specification and acceptance criteria
-├── ARCHITECTURE.md   # Developer's architecture document (added by developer)
-├── README.md         # This file
-└── src/              # Application source code (added by developer)
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
----
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-## Links
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-- [Project Spec](./SPEC.md)
-- [GitHub Issues](../../issues)
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
