@@ -20,7 +20,7 @@ const SECTION_LABELS: Record<Section, string> = {
   account: 'account',
   document: 'document',
   movie_tv: 'movie / tv',
-  restaurant_place: 'restaurant / place',
+  restaurant_place: 'restaurant',
   task: 'task',
   other: 'other',
 }
@@ -37,11 +37,48 @@ interface PendingConfirmation {
   summary: string
 }
 
-interface Props {
-  onActivityChange: (active: boolean) => void
+function FrogDoodle() {
+  return (
+    <svg
+      width="96"
+      height="116"
+      viewBox="0 0 96 116"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+      style={{ display: 'block', margin: '0 auto' }}
+    >
+      <path d="M20 56 Q16 34 48 24 Q80 34 76 56" stroke={C} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M33 56 Q31 72 35 82 Q40 88 48 87 Q56 88 61 82 Q65 72 63 56" stroke={C} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M33 56 Q48 61 63 56" stroke={C} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <circle cx="43" cy="37" r="3.5" stroke={C} strokeWidth="1.2" />
+      <circle cx="59" cy="42" r="2.8" stroke={C} strokeWidth="1.2" />
+      <circle cx="32" cy="46" r="2.2" stroke={C} strokeWidth="1.2" />
+      <path d="M27 80 Q13 76 11 63 Q22 67 27 80" stroke={C} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M69 80 Q83 76 85 63 Q74 67 69 80" stroke={C} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M7 96 Q48 101 89 96" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M16 96 Q14 89 13 82" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M24 97 Q23 90 24 83" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M72 96 Q74 89 75 82" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M80 97 Q81 90 80 83" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <circle cx="10" cy="22" r="2.2" stroke={C} strokeWidth="1.1" />
+      <path d="M10 24 Q10 32 11 36" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M8 19 Q6 15 7 11" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M12 19 Q14 15 13 11" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M7 22 Q3 21 2 23" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M13 22 Q17 21 18 23" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <circle cx="84" cy="22" r="2.2" stroke={C} strokeWidth="1.1" />
+      <path d="M84 24 Q84 32 83 36" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M82 19 Q80 15 81 11" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M86 19 Q88 15 87 11" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M81 22 Q77 21 76 23" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M87 22 Q91 21 92 23" stroke={C} strokeWidth="1" strokeLinecap="round" />
+      <path d="M38 10 Q38 6 42 6 Q43 3 47 4 Q51 2 52 5 Q56 5 56 9 Q56 12 52 12 Q38 12 38 10Z" stroke={C} strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  )
 }
 
-export function ChatPanel({ onActivityChange }: Props) {
+export function ChatPanel() {
   const [content, setContent] = useState('')
   const [userNote, setUserNote] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -49,10 +86,6 @@ export function ChatPanel({ onActivityChange }: Props) {
   const [pending, setPending] = useState<PendingConfirmation | null>(null)
   const savedContents = useRef<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    onActivityChange(messages.length > 0 || content.trim() !== '')
-  }, [messages.length, content])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -135,120 +168,141 @@ export function ChatPanel({ onActivityChange }: Props) {
   }
 
   return (
-    <>
-      {/* message history — full-viewport fixed container so scroll always reaches the top */}
-      {messages.length > 0 && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: '148px',
-            overflowY: 'auto',
-            background: BG,
-            padding: '32px 32px 28px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-          }}
-        >
-          <div style={{ flex: 1 }} />
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              }}
-            >
-              <div
-                style={{
-                  maxWidth: '68%',
-                  fontSize: '13px',
-                  lineHeight: 1.75,
-                  letterSpacing: '0.08em',
-                  fontWeight: 300,
-                  color: C,
-                  opacity: msg.role === 'error' ? 0.45 : 1,
-                  border: `1px solid ${msg.role === 'user' ? C : 'rgba(43,43,224,0.35)'}`,
-                  background: msg.role === 'assistant' ? 'rgba(43,43,224,0.07)' : 'transparent',
-                  borderRadius: '3px',
-                  padding: '8px 14px',
-                  textAlign: 'left',
-                }}
-                dangerouslySetInnerHTML={{
-                  __html: msg.text
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/"([^"]+)"/g, '<strong>"$1"</strong>')
-                    .replace(/\n/g, '<br />'),
-                }}
-              />
-            </div>
-          ))}
-
-          {/* low-confidence section picker */}
-          {pending && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ maxWidth: '72%' }}>
-                <p
-                  style={{
-                    fontSize: '11px',
-                    color: C,
-                    opacity: 0.5,
-                    letterSpacing: '0.1em',
-                    marginBottom: '10px',
-                  }}
-                >
-                  pick a section:
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {ALL_SECTIONS.map((s, i) => (
-                    <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      {i > 0 && (
-                        <span style={{ color: C, opacity: 0.35, margin: '0 6px', fontSize: '13px' }}> · </span>
-                      )}
-                      <button
-                        onClick={() => handleConfirm(s)}
-                        disabled={loading}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: loading ? 'default' : 'pointer',
-                          fontFamily: FONT,
-                          fontSize: '13px',
-                          color: C,
-                          letterSpacing: '0.06em',
-                          textTransform: 'lowercase',
-                          textDecoration: s === pending.section ? 'underline' : 'none',
-                          textUnderlineOffset: '3px',
-                          opacity: loading ? 0.3 : s === pending.section ? 1 : 0.6,
-                        }}
-                      >
-                        {SECTION_LABELS[s]}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-      )}
-
-      {/* input area — always fixed at bottom */}
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: BG,
+      }}
+    >
+      {/* message history */}
       <div
         style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '18px 32px 28px',
-          background: BG,
+          flex: 1,
+          overflowY: 'auto',
+          padding: '24px 24px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}
+      >
+        {messages.length === 0 && !pending && (
+          <div
+            style={{
+              margin: 'auto',
+              textAlign: 'center',
+              color: C,
+              maxWidth: '240px',
+            }}
+          >
+            <FrogDoodle />
+            <p
+              style={{
+                marginTop: '24px',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                lineHeight: 1.8,
+                opacity: 0.55,
+              }}
+            >
+              paste a link, type a note, or describe a task — ai will sort it for you
+            </p>
+          </div>
+        )}
+
+        {messages.length > 0 && <div style={{ flex: 1 }} />}
+
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            style={{
+              display: 'flex',
+              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '88%',
+                fontSize: '12px',
+                lineHeight: 1.7,
+                letterSpacing: '0.06em',
+                fontWeight: 300,
+                color: C,
+                opacity: msg.role === 'error' ? 0.45 : 1,
+                border: `1px solid ${msg.role === 'user' ? C : 'rgba(43,43,224,0.35)'}`,
+                background: msg.role === 'assistant' ? 'rgba(43,43,224,0.07)' : 'transparent',
+                borderRadius: '3px',
+                padding: '7px 12px',
+                textAlign: 'left',
+                wordBreak: 'break-word',
+              }}
+              dangerouslySetInnerHTML={{
+                __html: msg.text
+                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/"([^"]+)"/g, '<strong>"$1"</strong>')
+                  .replace(/\n/g, '<br />'),
+              }}
+            />
+          </div>
+        ))}
+
+        {pending && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{ maxWidth: '92%' }}>
+              <p
+                style={{
+                  fontSize: '10px',
+                  color: C,
+                  opacity: 0.5,
+                  letterSpacing: '0.1em',
+                  marginBottom: '8px',
+                }}
+              >
+                pick a section:
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
+                {ALL_SECTIONS.map((s, i) => (
+                  <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    {i > 0 && (
+                      <span style={{ color: C, opacity: 0.35, margin: '0 5px', fontSize: '12px' }}> · </span>
+                    )}
+                    <button
+                      onClick={() => handleConfirm(s)}
+                      disabled={loading}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: loading ? 'default' : 'pointer',
+                        fontFamily: FONT,
+                        fontSize: '12px',
+                        color: C,
+                        letterSpacing: '0.05em',
+                        textTransform: 'lowercase',
+                        textDecoration: s === pending.section ? 'underline' : 'none',
+                        textUnderlineOffset: '3px',
+                        opacity: loading ? 0.3 : s === pending.section ? 1 : 0.6,
+                      }}
+                    >
+                      {SECTION_LABELS[s]}
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* input area */}
+      <div
+        style={{
+          padding: '16px 24px 22px',
           borderTop: `1px solid rgba(43, 43, 224, 0.15)`,
+          background: BG,
         }}
       >
         <textarea
@@ -266,9 +320,9 @@ export function ChatPanel({ onActivityChange }: Props) {
             borderRadius: 0,
             background: 'transparent',
             fontFamily: FONT,
-            fontSize: '14px',
+            fontSize: '13px',
             color: C,
-            letterSpacing: '0.06em',
+            letterSpacing: '0.05em',
             textTransform: 'lowercase',
             padding: '4px 0 8px',
             outline: 'none',
@@ -281,8 +335,8 @@ export function ChatPanel({ onActivityChange }: Props) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            marginTop: '14px',
+            gap: '12px',
+            marginTop: '12px',
           }}
         >
           <input
@@ -294,14 +348,15 @@ export function ChatPanel({ onActivityChange }: Props) {
             disabled={loading}
             style={{
               flex: 1,
+              minWidth: 0,
               border: 'none',
               borderBottom: `1px solid rgba(43, 43, 224, 0.3)`,
               borderRadius: 0,
               background: 'transparent',
               fontFamily: FONT,
-              fontSize: '13px',
+              fontSize: '12px',
               color: C,
-              letterSpacing: '0.06em',
+              letterSpacing: '0.05em',
               textTransform: 'lowercase',
               padding: '4px 0',
               outline: 'none',
@@ -312,17 +367,18 @@ export function ChatPanel({ onActivityChange }: Props) {
             onClick={handleSubmit}
             disabled={loading || !content.trim()}
             style={{
-              background: loading || !content.trim() ? 'rgba(43,43,224,0.25)' : C,
-              border: 'none',
-              borderRadius: '4px',
-              padding: '7px 18px',
+              background: 'transparent',
+              border: `1px solid ${loading || !content.trim() ? 'rgba(43,43,224,0.3)' : C}`,
+              borderRadius: '3px',
+              padding: '6px 14px',
               cursor: content.trim() && !loading ? 'pointer' : 'default',
               fontFamily: FONT,
-              fontSize: '13px',
-              color: '#fff',
+              fontSize: '12px',
+              color: C,
               letterSpacing: '0.12em',
               textTransform: 'lowercase',
               flexShrink: 0,
+              opacity: loading || !content.trim() ? 0.4 : 1,
             }}
           >
             {loading ? 'saving...' : 'save →'}
@@ -331,16 +387,16 @@ export function ChatPanel({ onActivityChange }: Props) {
 
         <p
           style={{
-            fontSize: '11px',
+            fontSize: '10px',
             color: C,
             opacity: 0.35,
             letterSpacing: '0.08em',
-            marginTop: '12px',
+            marginTop: '10px',
           }}
         >
           enter to save · shift+enter for new line
         </p>
       </div>
-    </>
+    </div>
   )
 }
