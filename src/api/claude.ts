@@ -35,11 +35,14 @@ const SECTION_DESCRIPTIONS: Record<Section, string> = {
 
 export async function categorizeContent(
   content: string,
-  userNote: string
+  userNote: string,
+  customSections?: string[]
 ): Promise<CategorizationResult> {
-  const sectionList = Object.entries(SECTION_DESCRIPTIONS)
+  const defaultList = Object.entries(SECTION_DESCRIPTIONS)
     .map(([key, desc]) => `- ${key}: ${desc}`)
-    .join('\n')
+  const customList = (customSections ?? [])
+    .map((name) => `- ${name}: user-defined custom section`)
+  const sectionList = [...defaultList, ...customList].join('\n')
 
   const prompt = `You are a content categorization assistant. Classify the following content into exactly one of these sections:
 
