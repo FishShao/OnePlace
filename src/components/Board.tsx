@@ -19,8 +19,14 @@ const ALL_SECTIONS: Section[] = [
   'note', 'link', 'account', 'document', 'movie_tv', 'restaurant_place', 'task', 'other',
 ]
 
-export function Board() {
+interface Props {
+  queryHighlightedIds?: Set<string>
+}
+
+export function Board({ queryHighlightedIds = new Set() }: Props) {
   const { items, loading, highlightedIds } = useItems()
+
+  const allHighlightedIds = new Set([...highlightedIds, ...queryHighlightedIds])
 
   const bySection = Object.fromEntries(
     ALL_SECTIONS.map((s) => [s, items.filter((item) => item.section === s)])
@@ -84,7 +90,7 @@ export function Board() {
               section={section}
               label={SECTION_LABELS[section]}
               items={bySection[section]}
-              highlightedIds={highlightedIds}
+              highlightedIds={allHighlightedIds}
             />
           ))}
         </div>

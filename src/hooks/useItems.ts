@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import type { Section } from '../api/claude'
 
@@ -84,6 +84,19 @@ export function useItems() {
   }, [])
 
   return { items, loading, highlightedIds }
+}
+
+export async function getRecentItems(): Promise<SavedItem[]> {
+  const q = query(collection(db, 'items'), orderBy('createdAt', 'desc'), limit(200))
+  const snap = await getDocs(q)
+  return snap.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<SavedItem, 'id'>),
+  }))
+}
+
+export async function moveItem(itemId: string, newSection: Section): Promise<void> {
+  await updateDoc(doc(db, 'items', itemId), { section: newSection })
 }
 
 export async function saveItem(
