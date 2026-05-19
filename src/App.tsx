@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ChatPanel } from './components/ChatPanel'
 import { Board } from './components/Board'
 
@@ -7,8 +7,20 @@ const BG = '#E8E4DF'
 const BOARD_BG = '#F5F2EE'
 const SIDEBAR_WIDTH = 'min(420px, 28vw)'
 
+const QUERY_HIGHLIGHT_MS = 60_000
+
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [queryHighlightedIds, setQueryHighlightedIds] = useState<Set<string>>(new Set())
+  const queryHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleQueryMatch(ids: string[]) {
+    if (queryHighlightTimer.current) clearTimeout(queryHighlightTimer.current)
+    setQueryHighlightedIds(new Set(ids))
+    queryHighlightTimer.current = setTimeout(() => {
+      setQueryHighlightedIds(new Set())
+    }, QUERY_HIGHLIGHT_MS)
+  }
 
   return (
     <div
@@ -27,7 +39,7 @@ function App() {
           minHeight: '100svh',
         }}
       >
-        <Board />
+        <Board queryHighlightedIds={queryHighlightedIds} />
       </main>
 
       <aside
@@ -93,7 +105,7 @@ function App() {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <ChatPanel />
+          <ChatPanel onQueryMatch={handleQueryMatch} />
         </div>
       </aside>
 
