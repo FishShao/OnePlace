@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useItems } from '../hooks/useItems'
+import type { SavedItem } from '../hooks/useItems'
 import { useSections, addSection, deleteSection, renameSection } from '../hooks/useSections'
 import { SectionColumn } from './SectionColumn'
+import { ItemDetail } from './ItemDetail'
 import type { Section } from '../api/claude'
 
 const C = '#2B2BE0'
@@ -29,6 +31,7 @@ interface Props {
 export function Board({ queryHighlightedIds = new Set() }: Props) {
   const { items, loading, highlightedIds } = useItems()
   const { sections: customSections, loading: sectionsLoading } = useSections()
+  const [openItem, setOpenItem] = useState<SavedItem | null>(null)
 
   const [defaultLabelOverrides, setDefaultLabelOverrides] = useState<Record<string, string>>({})
   const [isAddingSection, setIsAddingSection] = useState(false)
@@ -120,6 +123,7 @@ export function Board({ queryHighlightedIds = new Set() }: Props) {
               highlightedIds={allHighlightedIds}
               customSections={customSections}
               isCustom={false}
+              onOpenDetail={setOpenItem}
               onRename={async (newName) => {
                 setDefaultLabelOverrides((prev) => ({ ...prev, [section]: newName }))
               }}
@@ -135,18 +139,14 @@ export function Board({ queryHighlightedIds = new Set() }: Props) {
               highlightedIds={allHighlightedIds}
               customSections={customSections}
               isCustom={true}
+              onOpenDetail={setOpenItem}
               onRename={async (newName) => renameSection(cs.id, cs.name, newName)}
               onDelete={async () => deleteSection(cs.id)}
             />
           ))}
 
           {/* add section */}
-          <div
-            style={{
-              breakInside: 'avoid',
-              marginBottom: '20px',
-            }}
-          >
+          <div style={{ breakInside: 'avoid', marginBottom: '20px' }}>
             {isAddingSection ? (
               <div>
                 <input
@@ -180,15 +180,7 @@ export function Board({ queryHighlightedIds = new Set() }: Props) {
                   }}
                 />
                 {addError && (
-                  <p
-                    style={{
-                      fontSize: '10px',
-                      color: C,
-                      opacity: 0.45,
-                      letterSpacing: '0.06em',
-                      marginTop: '4px',
-                    }}
-                  >
+                  <p style={{ fontSize: '10px', color: C, opacity: 0.45, letterSpacing: '0.06em', marginTop: '4px' }}>
                     — {addError}
                   </p>
                 )}
@@ -218,6 +210,14 @@ export function Board({ queryHighlightedIds = new Set() }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {openItem && (
+        <ItemDetail
+          item={openItem}
+          onClose={() => setOpenItem(null)}
+          customSections={customSections.map((cs) => cs.name)}
+        />
       )}
     </div>
   )

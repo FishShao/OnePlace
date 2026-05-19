@@ -132,6 +132,7 @@ interface Props {
   highlightedIds: Set<string>
   customSections: CustomSection[]
   isCustom?: boolean
+  onOpenDetail?: (item: SavedItem) => void
   onRename?: (newName: string) => Promise<void>
   onDelete?: () => Promise<void>
 }
@@ -143,15 +144,16 @@ export function SectionColumn({
   highlightedIds,
   customSections,
   isCustom = false,
+  onOpenDetail,
   onRename,
   onDelete,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(label)
-  const [isDragOver, setIsDragOver] = useState(false)
-  const renameInputRef = useRef<HTMLInputElement>(null)
   const dragCounter = useRef(0)
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   const Icon = SECTION_ICONS[section as Section] ?? IconOther
 
@@ -219,7 +221,6 @@ export function SectionColumn({
           marginBottom: collapsed ? 0 : '14px',
         }}
       >
-        {/* collapse toggle — just the icon + chevron are clickable */}
         <button
           onClick={() => setCollapsed((v) => !v)}
           aria-expanded={!collapsed}
@@ -237,7 +238,6 @@ export function SectionColumn({
           <Icon />
         </button>
 
-        {/* title — double-click to rename */}
         {isRenaming ? (
           <input
             ref={renameInputRef}
@@ -322,7 +322,6 @@ export function SectionColumn({
             flexShrink: 0,
             lineHeight: 1,
           }}
-          aria-hidden
         >
           ▾
         </button>
@@ -348,6 +347,7 @@ export function SectionColumn({
                 key={item.id}
                 item={item}
                 highlighted={highlightedIds.has(item.id)}
+                onOpenDetail={onOpenDetail}
                 customSections={customSections}
               />
             ))

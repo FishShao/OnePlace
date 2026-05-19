@@ -25,10 +25,11 @@ const ALL_SECTIONS: Section[] = [
 interface Props {
   item: SavedItem
   highlighted?: boolean
+  onOpenDetail?: (item: SavedItem) => void
   customSections?: CustomSection[]
 }
 
-export function ItemCard({ item, highlighted = false, customSections = [] }: Props) {
+export function ItemCard({ item, highlighted = false, onOpenDetail, customSections = [] }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -72,6 +73,11 @@ export function ItemCard({ item, highlighted = false, customSections = [] }: Pro
   const otherCustom = customSections.filter((cs) => cs.name !== item.section)
   const hasTargets = otherDefaults.length > 0 || otherCustom.length > 0
 
+  const moveTargets = [
+    ...otherDefaults.map((s) => ({ key: s, label: SECTION_LABELS[s] ?? s })),
+    ...otherCustom.map((cs) => ({ key: cs.name, label: cs.name })),
+  ]
+
   return (
     <div
       draggable
@@ -100,58 +106,64 @@ export function ItemCard({ item, highlighted = false, customSections = [] }: Pro
           }}
         />
       )}
+
       <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          gap: '10px',
-          marginBottom: '2px',
-          minWidth: 0,
-        }}
+        onClick={() => { if (!menuOpen) onOpenDetail?.(item) }}
+        style={{ cursor: menuOpen ? 'default' : 'pointer' }}
       >
-        <span
+        <div
           style={{
-            fontSize: '12px',
-            color: C,
-            letterSpacing: '0.06em',
-            fontWeight: 300,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            gap: '10px',
+            marginBottom: '2px',
             minWidth: 0,
-            flex: 1,
-            overflowWrap: 'anywhere',
-            wordBreak: 'break-word',
           }}
         >
-          {item.title}
-        </span>
-        <span
-          style={{
-            fontSize: '10px',
-            color: C,
-            opacity: 0.35,
-            letterSpacing: '0.05em',
-            flexShrink: 0,
-          }}
-        >
-          {date}
-        </span>
+          <span
+            style={{
+              fontSize: '12px',
+              color: C,
+              letterSpacing: '0.06em',
+              fontWeight: 300,
+              minWidth: 0,
+              flex: 1,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+            }}
+          >
+            {item.title}
+          </span>
+          <span
+            style={{
+              fontSize: '10px',
+              color: C,
+              opacity: 0.35,
+              letterSpacing: '0.05em',
+              flexShrink: 0,
+            }}
+          >
+            {date}
+          </span>
+        </div>
+        {preview !== item.title && (
+          <p
+            style={{
+              fontSize: '10px',
+              color: C,
+              opacity: 0.5,
+              letterSpacing: '0.04em',
+              lineHeight: 1.55,
+              fontWeight: 300,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+            }}
+          >
+            {preview}
+          </p>
+        )}
       </div>
-      {preview !== item.title && (
-        <p
-          style={{
-            fontSize: '10px',
-            color: C,
-            opacity: 0.5,
-            letterSpacing: '0.04em',
-            lineHeight: 1.55,
-            fontWeight: 300,
-            overflowWrap: 'anywhere',
-            wordBreak: 'break-word',
-          }}
-        >
-          {preview}
-        </p>
-      )}
 
       {hasTargets && (
         <button
@@ -185,10 +197,7 @@ export function ItemCard({ item, highlighted = false, customSections = [] }: Pro
             alignItems: 'center',
           }}
         >
-          {[
-            ...otherDefaults.map((s) => ({ key: s, label: SECTION_LABELS[s] ?? s })),
-            ...otherCustom.map((cs) => ({ key: cs.name, label: cs.name })),
-          ].map(({ key, label }, i) => (
+          {moveTargets.map(({ key, label }, i) => (
             <span key={key} style={{ display: 'inline-flex', alignItems: 'center' }}>
               {i > 0 && (
                 <span style={{ color: C, opacity: 0.3, margin: '0 4px', fontSize: '10px' }}>·</span>
