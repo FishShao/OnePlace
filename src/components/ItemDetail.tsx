@@ -36,9 +36,10 @@ function formatDate(ts: { seconds: number } | null | undefined): string {
 interface Props {
   item: SavedItem
   onClose: () => void
+  customSections?: string[]
 }
 
-export function ItemDetail({ item, onClose }: Props) {
+export function ItemDetail({ item, onClose, customSections = [] }: Props) {
   const [content, setContent] = useState(item.content)
   const [sourceLabel, setSourceLabel] = useState<string>(
     item.sourceLabel ? item.sourceLabel.toLowerCase() : ''
@@ -203,13 +204,13 @@ export function ItemDetail({ item, onClose }: Props) {
       <div
         style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginBottom: '40px' }}
       >
-        {ALL_SECTIONS.map((s, i) => (
-          <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
+        {[...ALL_SECTIONS.map((s) => ({ key: s, label: SECTION_LABELS[s] })), ...customSections.map((s) => ({ key: s, label: s }))].map(({ key, label }, i) => (
+          <span key={key} style={{ display: 'inline-flex', alignItems: 'center' }}>
             {i > 0 && (
               <span style={{ color: C, opacity: 0.25, margin: '0 7px', fontSize: '14px' }}>·</span>
             )}
             <button
-              onClick={() => setSection(s)}
+              onClick={() => setSection(key)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -220,12 +221,12 @@ export function ItemDetail({ item, onClose }: Props) {
                 color: C,
                 letterSpacing: '0.08em',
                 fontWeight: 800,
-                textDecoration: section === s ? 'underline' : 'none',
+                textDecoration: section === key ? 'underline' : 'none',
                 textUnderlineOffset: '3px',
-                opacity: section === s ? 1 : 0.45,
+                opacity: section === key ? 1 : 0.45,
               }}
             >
-              {SECTION_LABELS[s]}
+              {label}
             </button>
           </span>
         ))}
