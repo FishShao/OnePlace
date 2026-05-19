@@ -1,73 +1,131 @@
-# React + TypeScript + Vite
+# oneplace
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> everything you saved, one quiet place.
 
-Currently, two official plugins are available:
+**live demo → [oneplace-cb648.web.app](https://oneplace-cb648.web.app/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## what is it
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+oneplace is a personal knowledge aggregator. paste anything — a link, a note, a password, a restaurant name, a movie title — and AI automatically categorizes it and places it on a visual board. ask for it back in plain language whenever you need it.
 
-## Expanding the ESLint configuration
+no folders. no tags. no manual sorting. just save and ask.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## screenshots
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+![chat input](images/ss_chat_1.png)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+![board view](images/ss_chat_2.png)
+
+---
+
+## features
+
+- **ai categorization** — claude haiku reads what you paste and assigns it to the right section automatically
+- **chat-style input** — feels like messaging an assistant, not filing a document
+- **natural language retrieval** — ask "what restaurants did i save?" and get an instant answer
+- **kanban board** — all saved items organized in collapsible columns
+- **drag and drop** — move cards between sections by dragging
+- **custom sections** — create your own categories beyond the 8 defaults
+- **edit cards** — click any card to edit content, source, or section
+- **duplicate detection** — saves the same content twice? the app catches it
+
+---
+
+## default sections
+
+| key | label |
+|-----|-------|
+| `note` | note |
+| `link` | link |
+| `account` | account |
+| `document` | document |
+| `movie_tv` | movie / tv |
+| `restaurant_place` | restaurant |
+| `task` | task |
+| `other` | other |
+
+---
+
+## tech stack
+
+| layer | choice |
+|-------|--------|
+| frontend | react 18 + vite + typescript |
+| database | firebase firestore |
+| auth | firebase auth |
+| ai | claude haiku (`claude-haiku-4-5`) |
+| deployment | firebase hosting |
+
+---
+
+## run locally
+
+```bash
+# 1. clone
+git clone https://github.com/FishShao/OnePlace.git
+cd OnePlace
+
+# 2. install
+npm install
+
+# 3. set environment variables
+cp .env.local.example .env.local
+# fill in your keys in .env.local
+
+# 4. start dev server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+open [localhost:5173](http://localhost:5173)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## environment variables
+
+```
+VITE_ANTHROPIC_API_KEY=
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+
+---
+
+## project structure
+
+```
+src/
+├── api/
+│   └── claude.ts          # categorize() and retrieve()
+├── components/
+│   ├── ChatPanel.tsx       # chat input — save and query
+│   ├── Board.tsx           # kanban board layout
+│   ├── SectionColumn.tsx   # one column per section
+│   ├── ItemCard.tsx        # individual saved item card
+│   └── ItemDetail.tsx      # edit/view modal
+├── hooks/
+│   ├── useItems.ts         # firestore listener + item operations
+│   └── useSections.ts      # custom sections
+├── utils/
+│   └── intentDetector.ts   # save vs. query heuristic
+├── firebase.ts
+├── App.tsx
+└── main.tsx
+```
+
+---
+
+## commands
+
+```bash
+npm run dev       # dev server at localhost:5173
+npm run build     # production build
+npm run preview   # preview production build
 ```
