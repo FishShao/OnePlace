@@ -21,6 +21,10 @@ export interface SavedItem {
   title: string
   summary: string
   createdAt: Timestamp | null
+  updatedAt?: Timestamp | null
+  sourceLabel?: string
+  url?: string
+  isDone?: boolean
 }
 
 export function useItems() {
@@ -96,6 +100,16 @@ export async function getRecentItems(): Promise<SavedItem[]> {
 
 export async function moveItem(itemId: string, newSection: string): Promise<void> {
   await updateDoc(doc(db, 'items', itemId), { section: newSection })
+}
+
+export async function updateItem(
+  itemId: string,
+  changes: Partial<Pick<SavedItem, 'content' | 'sourceLabel' | 'section'>>
+): Promise<void> {
+  await updateDoc(doc(db, 'items', itemId), {
+    ...changes,
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function saveItem(
