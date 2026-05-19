@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChatPanel } from './components/ChatPanel'
 import { Board } from './components/Board'
+import { deduplicateItems } from './hooks/useItems'
 
 const C = '#2B2BE0'
 const BG = '#E8E4DF'
@@ -13,6 +14,10 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [queryHighlightedIds, setQueryHighlightedIds] = useState<Set<string>>(new Set())
   const queryHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    deduplicateItems().catch(console.error)
+  }, [])
 
   function handleQueryMatch(ids: string[]) {
     if (queryHighlightTimer.current) clearTimeout(queryHighlightTimer.current)

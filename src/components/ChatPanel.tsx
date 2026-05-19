@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { categorizeContent, retrieve, type Section } from '../api/claude'
-import { saveItem, getRecentItems } from '../hooks/useItems'
+import { saveItem, getRecentItems, checkDuplicate } from '../hooks/useItems'
 import { isQuery } from '../utils/intentDetector'
 
 const C = '#2B2BE0'
@@ -90,7 +90,7 @@ export function ChatPanel({ onQueryMatch }: Props) {
   const [loading, setLoading] = useState(false)
   const [isQuerying, setIsQuerying] = useState(false)
   const [pending, setPending] = useState<PendingConfirmation | null>(null)
-  const savedContents = useRef<Set<string>>(new Set())
+  const savedContents = useRef<Map<string, string>>(new Map())
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -140,12 +140,21 @@ export function ChatPanel({ onQueryMatch }: Props) {
     }
 
     if (savedContents.current.has(trimmedContent)) {
-      addMessage('assistant', `already saved this one.`)
+      const cachedTitle = savedContents.current.get(trimmedContent)!
+      addMessage('assistant', `— already saved: "${cachedTitle}"`)
       setLoading(false)
       return
     }
 
     try {
+      const { isDuplicate, title: existingTitle } = await checkDuplicate(trimmedContent)
+      if (isDuplicate) {
+        savedContents.current.set(trimmedContent, existingTitle)
+        addMessage('assistant', `— already saved: "${existingTitle}"`)
+        setLoading(false)
+        return
+      }
+
       const result = await categorizeContent(trimmedContent, userNote.trim())
 
       if (result.confidence === 'low') {
@@ -162,7 +171,7 @@ export function ChatPanel({ onQueryMatch }: Props) {
         )
       } else {
         await saveItem(trimmedContent, userNote.trim(), result.section, result.title, result.summary)
-        savedContents.current.add(trimmedContent)
+        savedContents.current.set(trimmedContent, result.title)
         addMessage('assistant', `saved to **${SECTION_LABELS[result.section]}** as "${result.title}".`)
       }
     } catch (err) {
@@ -180,7 +189,7 @@ export function ChatPanel({ onQueryMatch }: Props) {
 
     try {
       await saveItem(pending.content, pending.userNote, chosenSection, pending.title, pending.summary)
-      savedContents.current.add(pending.content)
+      savedContents.current.set(pending.content, pending.title)
       addMessage('assistant', `saved to **${SECTION_LABELS[chosenSection]}** as "${pending.title}".`)
     } catch (err) {
       console.error(err)
