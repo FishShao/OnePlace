@@ -44,7 +44,7 @@ export function ItemDetail({ item, onClose, customSections = [] }: Props) {
   const [sourceLabel, setSourceLabel] = useState<string>(
     item.sourceLabel ? item.sourceLabel.toLowerCase() : ''
   )
-  const [section, setSection] = useState<Section>(item.section)
+  const [section, setSection] = useState<string>(item.section)
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
