@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import type { Section } from '../api/claude'
 
 const HIGHLIGHT_MS = 60_000
 
 interface SavedItemWrite {
   content: string
   userNote: string
-  section: Section
+  section: string
   title: string
   summary: string
   createdAt: ReturnType<typeof serverTimestamp>
@@ -18,7 +17,7 @@ export interface SavedItem {
   id: string
   content: string
   userNote: string
-  section: Section
+  section: string
   title: string
   summary: string
   createdAt: Timestamp | null
@@ -95,14 +94,14 @@ export async function getRecentItems(): Promise<SavedItem[]> {
   }))
 }
 
-export async function moveItem(itemId: string, newSection: Section): Promise<void> {
+export async function moveItem(itemId: string, newSection: string): Promise<void> {
   await updateDoc(doc(db, 'items', itemId), { section: newSection })
 }
 
 export async function saveItem(
   content: string,
   userNote: string,
-  section: Section,
+  section: string,
   title: string,
   summary: string
 ): Promise<string> {

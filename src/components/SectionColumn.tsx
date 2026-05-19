@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ItemCard } from './ItemCard'
 import { moveItem } from '../hooks/useItems'
 import type { SavedItem } from '../hooks/useItems'
 import type { Section } from '../api/claude'
+import type { CustomSection } from '../hooks/useSections'
 
 const C = '#2B2BE0'
+const FONT = "'Overpass Mono', 'Courier New', Courier, monospace"
 
 const iconProps = {
   width: 18,
@@ -24,7 +26,6 @@ const s = (w = 1.1) => ({
 })
 
 function IconNote() {
-  // feather quill
   return (
     <svg {...iconProps}>
       <path d="M14.5 3.2 Q15.1 2.6 15.5 3 Q15.9 3.5 15.3 4 Q10.5 8.8 5.5 13.5 Q4.3 14.6 3.2 14.4 Q3.4 13 4.5 11.9 Q9.5 7.2 14.5 3.2 Z" {...s(1)} />
@@ -35,7 +36,6 @@ function IconNote() {
 }
 
 function IconLink() {
-  // two interlocking ovals
   return (
     <svg {...iconProps}>
       <path d="M7.3 10.5 Q4.3 10.7 3.4 8.3 Q2.6 5.7 5.2 4.4 Q7.6 3.3 8.9 5.4" {...s(1)} />
@@ -46,7 +46,6 @@ function IconLink() {
 }
 
 function IconAccount() {
-  // key: ring + shaft + teeth
   return (
     <svg {...iconProps}>
       <circle cx="5.2" cy="6" r="2.7" {...s(1)} />
@@ -58,7 +57,6 @@ function IconAccount() {
 }
 
 function IconDocument() {
-  // folded scroll / page with corner
   return (
     <svg {...iconProps}>
       <path d="M3.6 2.8 Q3.4 2.6 3.7 2.6 L11.3 2.6 Q11.5 2.6 11.6 2.8 L14.6 5.8 Q14.8 6 14.7 6.2 L14.7 14.9 Q14.7 15.3 14.3 15.3 L3.8 15.3 Q3.4 15.3 3.4 14.9 L3.4 3 Q3.4 2.8 3.6 2.8 Z" {...s(1)} />
@@ -70,7 +68,6 @@ function IconDocument() {
 }
 
 function IconMovie() {
-  // clapperboard
   return (
     <svg {...iconProps}>
       <path d="M2.4 6.2 L15.6 6.2 Q15.8 6.2 15.8 6.4 L15.8 14.7 Q15.8 14.9 15.6 14.9 L2.4 14.9 Q2.2 14.9 2.2 14.7 L2.2 6.4 Q2.2 6.2 2.4 6.2 Z" {...s(1)} />
@@ -83,7 +80,6 @@ function IconMovie() {
 }
 
 function IconPlace() {
-  // leaf with central vein
   return (
     <svg {...iconProps}>
       <path d="M9.2 2.3 Q3.3 6 4.5 13 Q5 15 6.8 15.2 Q13.6 15 15 5.3 Q13.5 3 9.2 2.3 Z" {...s(1)} />
@@ -95,7 +91,6 @@ function IconPlace() {
 }
 
 function IconTask() {
-  // checkmark inside hand-drawn circle
   return (
     <svg {...iconProps}>
       <path d="M9 2.2 Q14.5 2.8 15.6 7.9 Q16.5 13.4 11.4 15.3 Q6 16.8 3.1 12 Q0.9 6.8 5.4 3.5 Q7 2.4 9 2.2 Z" {...s(1)} />
@@ -105,7 +100,6 @@ function IconTask() {
 }
 
 function IconOther() {
-  // asterisk / little star doodle
   return (
     <svg {...iconProps}>
       <path d="M9 2.8 Q9.2 6 9 8.9" {...s(1)} />
@@ -132,17 +126,45 @@ const SECTION_ICONS: Record<Section, () => React.ReactElement> = {
 }
 
 interface Props {
-  section: Section
+  section: string
   label: string
   items: SavedItem[]
   highlightedIds: Set<string>
+  customSections: CustomSection[]
+  isCustom?: boolean
+  onRename?: (newName: string) => Promise<void>
+  onDelete?: () => Promise<void>
 }
 
-export function SectionColumn({ section, label, items, highlightedIds }: Props) {
+export function SectionColumn({
+  section,
+  label,
+  items,
+  highlightedIds,
+  customSections,
+  isCustom = false,
+  onRename,
+  onDelete,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(label)
   const [isDragOver, setIsDragOver] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
   const dragCounter = useRef(0)
-  const Icon = SECTION_ICONS[section]
+
+  const Icon = SECTION_ICONS[section as Section] ?? IconOther
+
+  useEffect(() => {
+    if (isRenaming) renameInputRef.current?.focus()
+  }, [isRenaming])
+
+  async function handleRenameSubmit() {
+    const trimmed = renameValue.trim().toLowerCase()
+    setIsRenaming(false)
+    if (!trimmed || trimmed === label) return
+    await onRename?.(trimmed)
+  }
 
   function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
@@ -188,60 +210,123 @@ export function SectionColumn({ section, label, items, highlightedIds }: Props) 
         background: isDragOver ? 'rgba(43,43,224,0.04)' : 'transparent',
       }}
     >
-      <button
-        onClick={() => setCollapsed((v) => !v)}
-        aria-expanded={!collapsed}
+      <div
         style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
           width: '100%',
           marginBottom: collapsed ? 0 : '14px',
-          color: C,
-          fontFamily: 'inherit',
-          letterSpacing: '0.12em',
         }}
       >
-        <Icon />
-        <span
+        {/* collapse toggle — just the icon + chevron are clickable */}
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
           style={{
-            fontSize: '14px',
-            fontWeight: 600,
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
             color: C,
-            textTransform: 'lowercase',
-            letterSpacing: '0.08em',
+            flexShrink: 0,
           }}
         >
-          {label}
-        </span>
+          <Icon />
+        </button>
+
+        {/* title — double-click to rename */}
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameSubmit()
+              if (e.key === 'Escape') setIsRenaming(false)
+            }}
+            onBlur={handleRenameSubmit}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              flex: 1,
+              background: 'none',
+              border: 'none',
+              borderBottom: `1px solid ${C}`,
+              borderRadius: 0,
+              fontFamily: FONT,
+              fontSize: '13px',
+              color: C,
+              letterSpacing: '0.06em',
+              fontWeight: 300,
+              padding: '0 0 2px',
+              outline: 'none',
+              textTransform: 'lowercase',
+              minWidth: 0,
+            }}
+          />
+        ) : (
+          <span
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              setRenameValue(label)
+              setIsRenaming(true)
+            }}
+            title="double-click to rename"
+            style={{
+              flex: 1,
+              fontSize: '13px',
+              fontWeight: 300,
+              color: C,
+              textTransform: 'lowercase',
+              letterSpacing: '0.08em',
+              cursor: 'text',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        )}
+
         <span
           style={{
             fontSize: '10px',
+            color: C,
             opacity: 0.4,
             letterSpacing: '0.08em',
             fontWeight: 300,
+            flexShrink: 0,
           }}
         >
           {items.length > 0 ? `· ${items.length}` : ''}
         </span>
-        <span
-          aria-hidden
+
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          aria-label={collapsed ? 'expand' : 'collapse'}
           style={{
-            marginLeft: 'auto',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
             display: 'inline-block',
             fontSize: '10px',
+            color: C,
             opacity: 0.45,
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 200ms ease',
+            flexShrink: 0,
+            lineHeight: 1,
           }}
+          aria-hidden
         >
           ▾
-        </span>
-      </button>
+        </button>
+      </div>
 
       {!collapsed && (
         <div>
@@ -263,8 +348,33 @@ export function SectionColumn({ section, label, items, highlightedIds }: Props) 
                 key={item.id}
                 item={item}
                 highlighted={highlightedIds.has(item.id)}
+                customSections={customSections}
               />
             ))
+          )}
+
+          {isCustom && (
+            <button
+              disabled={items.length > 0}
+              onClick={async () => { await onDelete?.() }}
+              style={{
+                marginTop: '10px',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: items.length > 0 ? 'default' : 'pointer',
+                fontFamily: FONT,
+                fontSize: '10px',
+                color: C,
+                opacity: items.length > 0 ? 0.2 : 0.4,
+                letterSpacing: '0.08em',
+                display: 'block',
+                textTransform: 'lowercase',
+              }}
+              title={items.length > 0 ? 'move all cards out before deleting' : 'delete this section'}
+            >
+              — delete section
+            </button>
           )}
         </div>
       )}

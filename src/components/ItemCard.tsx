@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import type { SavedItem } from '../hooks/useItems'
 import { moveItem } from '../hooks/useItems'
 import type { Section } from '../api/claude'
+import type { CustomSection } from '../hooks/useSections'
 
 const C = '#2B2BE0'
 const FONT = "'Overpass Mono', 'Courier New', Courier, monospace"
 
-const SECTION_LABELS: Record<Section, string> = {
+const SECTION_LABELS: Record<string, string> = {
   note: 'note',
   link: 'link',
   account: 'account',
@@ -24,9 +25,10 @@ const ALL_SECTIONS: Section[] = [
 interface Props {
   item: SavedItem
   highlighted?: boolean
+  customSections?: CustomSection[]
 }
 
-export function ItemCard({ item, highlighted = false }: Props) {
+export function ItemCard({ item, highlighted = false, customSections = [] }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -57,7 +59,7 @@ export function ItemCard({ item, highlighted = false }: Props) {
     e.dataTransfer.effectAllowed = 'move'
   }
 
-  async function handleMove(targetSection: Section) {
+  async function handleMove(targetSection: string) {
     setMenuOpen(false)
     try {
       await moveItem(item.id, targetSection)
@@ -66,7 +68,9 @@ export function ItemCard({ item, highlighted = false }: Props) {
     }
   }
 
-  const otherSections = ALL_SECTIONS.filter((s) => s !== item.section)
+  const otherDefaults = ALL_SECTIONS.filter((s) => s !== item.section)
+  const otherCustom = customSections.filter((cs) => cs.name !== item.section)
+  const hasTargets = otherDefaults.length > 0 || otherCustom.length > 0
 
   return (
     <div
@@ -149,25 +153,27 @@ export function ItemCard({ item, highlighted = false }: Props) {
         </p>
       )}
 
-      <button
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-          fontFamily: FONT,
-          fontSize: '10px',
-          color: C,
-          opacity: menuOpen ? 0.65 : 0.3,
-          letterSpacing: '0.08em',
-          marginTop: '5px',
-          display: 'block',
-        }}
-      >
-        {menuOpen ? '— close' : 'move →'}
-      </button>
+      {hasTargets && (
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            fontFamily: FONT,
+            fontSize: '10px',
+            color: C,
+            opacity: menuOpen ? 0.65 : 0.3,
+            letterSpacing: '0.08em',
+            marginTop: '5px',
+            display: 'block',
+          }}
+        >
+          {menuOpen ? '— close' : 'move →'}
+        </button>
+      )}
 
       {menuOpen && (
         <div
@@ -179,14 +185,17 @@ export function ItemCard({ item, highlighted = false }: Props) {
             alignItems: 'center',
           }}
         >
-          {otherSections.map((s, i) => (
-            <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {[
+            ...otherDefaults.map((s) => ({ key: s, label: SECTION_LABELS[s] ?? s })),
+            ...otherCustom.map((cs) => ({ key: cs.name, label: cs.name })),
+          ].map(({ key, label }, i) => (
+            <span key={key} style={{ display: 'inline-flex', alignItems: 'center' }}>
               {i > 0 && (
                 <span style={{ color: C, opacity: 0.3, margin: '0 4px', fontSize: '10px' }}>·</span>
               )}
               <button
                 onMouseDown={(e) => e.stopPropagation()}
-                onClick={() => handleMove(s)}
+                onClick={() => handleMove(key)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -200,7 +209,7 @@ export function ItemCard({ item, highlighted = false }: Props) {
                   textTransform: 'lowercase',
                 }}
               >
-                {SECTION_LABELS[s]}
+                {label}
               </button>
             </span>
           ))}
