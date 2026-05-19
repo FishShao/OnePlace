@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, limit, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 
 const HIGHLIGHT_MS = 60_000
@@ -110,6 +110,34 @@ export async function updateItem(
     ...changes,
     updatedAt: serverTimestamp(),
   })
+}
+
+export async function checkDuplicate(content: string): Promise<{ isDuplicate: boolean; title: string }> {
+  const trimmed = content.trim()
+  const q = query(collection(db, 'items'), where('content', '==', trimmed), limit(1))
+  const snap = await getDocs(q)
+  if (snap.empty) return { isDuplicate: false, title: '' }
+  const data = snap.docs[0].data() as Omit<SavedItem, 'id'>
+  return { isDuplicate: true, title: data.title ?? '' }
+}
+
+export async function deduplicateItems(): Promise<number> {
+  const snap = await getDocs(query(collection(db, 'items'), orderBy('createdAt', 'asc')))
+  const all: SavedItem[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SavedItem, 'id'>) }))
+  const groups = new Map<string, SavedItem[]>()
+  for (const item of all) {
+    const key = item.content.trim().toLowerCase()
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(item)
+  }
+  let deleted = 0
+  for (const group of groups.values()) {
+    if (group.length <= 1) continue
+    const toDelete = group.slice(1)
+    await Promise.all(toDelete.map((item) => deleteDoc(doc(db, 'items', item.id))))
+    deleted += toDelete.length
+  }
+  return deleted
 }
 
 export async function saveItem(
