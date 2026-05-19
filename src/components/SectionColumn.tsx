@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ItemCard } from './ItemCard'
+import { moveItem } from '../hooks/useItems'
 import type { SavedItem } from '../hooks/useItems'
 import type { Section } from '../api/claude'
 import type { CustomSection } from '../hooks/useSections'
@@ -148,7 +149,9 @@ export function SectionColumn({
   const [collapsed, setCollapsed] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(label)
+  const [isDragOver, setIsDragOver] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const dragCounter = useRef(0)
 
   const Icon = SECTION_ICONS[section as Section] ?? IconOther
 
@@ -163,15 +166,48 @@ export function SectionColumn({
     await onRename?.(trimmed)
   }
 
+  function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    dragCounter.current++
+    setIsDragOver(true)
+  }
+
+  function handleDragLeave() {
+    dragCounter.current--
+    if (dragCounter.current === 0) setIsDragOver(false)
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  async function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragOver(false)
+    const itemId = e.dataTransfer.getData('text/plain')
+    if (!itemId) return
+    try {
+      await moveItem(itemId, section)
+    } catch (err) {
+      console.error('drop move failed:', err)
+    }
+  }
+
   return (
     <div
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       style={{
         breakInside: 'avoid',
         marginBottom: '20px',
-        border: `1px solid ${C}`,
+        border: isDragOver ? `1px dashed ${C}` : `1px solid ${C}`,
         borderRadius: '3px',
         padding: '14px 16px 16px',
-        background: 'transparent',
+        background: isDragOver ? 'rgba(43,43,224,0.04)' : 'transparent',
       }}
     >
       <div

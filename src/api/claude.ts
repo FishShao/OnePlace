@@ -85,3 +85,54 @@ Use "low" confidence if you are unsure between multiple categories or the conten
   const parsed = JSON.parse(jsonMatch[0]) as CategorizationResult
   return parsed
 }
+
+export interface RetrievalResult {
+  answer: string
+  matchedIds: string[]
+}
+
+export async function retrieve(
+  query: string,
+  items: Array<{ id: string; title: string; section: string; content: string }>
+): Promise<RetrievalResult> {
+  const itemList = items
+    .map((item) => `[id:${item.id}] title: "${item.title}" | section: ${item.section} | ${item.content}`)
+    .join('\n')
+
+  const prompt = `You are a personal knowledge retrieval assistant. The user saved items to their board.
+
+User query: ${query}
+
+Saved items (most recent first):
+${itemList || '(no items saved yet)'}
+
+Respond with a JSON object only, no extra text:
+{
+  "answer": "<answer in the same language as the query — list matching items with title and section name, be concise and conversational. If nothing matches, say so gently.>",
+  "matchedIds": ["<id>", ...]
+}
+
+Rules:
+- matchedIds must only contain ids from the list above
+- If nothing matches, set matchedIds to [] and say so in the answer
+- Answer language must match query language (Chinese query → Chinese answer, English → English)`
+
+  const message = await client.messages.create(
+    {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }],
+    },
+    { timeout: 15000 }
+  )
+
+  const text = message.content
+    .filter((block) => block.type === 'text')
+    .map((block) => (block as { type: 'text'; text: string }).text)
+    .join('')
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('No JSON found in Claude response')
+
+  return JSON.parse(jsonMatch[0]) as RetrievalResult
+}

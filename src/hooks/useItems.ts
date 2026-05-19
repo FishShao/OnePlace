@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 
 const HIGHLIGHT_MS = 60_000
@@ -83,6 +83,15 @@ export function useItems() {
   }, [])
 
   return { items, loading, highlightedIds }
+}
+
+export async function getRecentItems(): Promise<SavedItem[]> {
+  const q = query(collection(db, 'items'), orderBy('createdAt', 'desc'), limit(200))
+  const snap = await getDocs(q)
+  return snap.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<SavedItem, 'id'>),
+  }))
 }
 
 export async function moveItem(itemId: string, newSection: string): Promise<void> {

@@ -53,6 +53,12 @@ export function ItemCard({ item, highlighted = false, customSections = [] }: Pro
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [menuOpen])
 
+  function handleDragStart(e: React.DragEvent<HTMLDivElement>) {
+    if (menuOpen) { e.preventDefault(); return }
+    e.dataTransfer.setData('text/plain', item.id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
   async function handleMove(targetSection: string) {
     setMenuOpen(false)
     try {
@@ -68,12 +74,15 @@ export function ItemCard({ item, highlighted = false, customSections = [] }: Pro
 
   return (
     <div
+      draggable
+      onDragStart={handleDragStart}
       style={{
         marginBottom: '14px',
         paddingLeft: highlighted ? '8px' : '0',
         borderLeft: highlighted ? `1px solid ${C}` : '1px solid transparent',
         transition: 'padding-left 400ms ease, border-color 400ms ease',
         position: 'relative',
+        cursor: menuOpen ? 'default' : 'grab',
       }}
     >
       {highlighted && (

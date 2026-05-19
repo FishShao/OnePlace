@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
-import { categorizeContent, type Section } from '../api/claude'
-import { saveItem } from '../hooks/useItems'
+import { categorizeContent, retrieve, type Section } from '../api/claude'
+import { saveItem, getRecentItems } from '../hooks/useItems'
+import { isQuery } from '../utils/intentDetector'
 
 const C = '#2B2BE0'
 const BG = '#E8E4DF'
 const FONT = "'Overpass Mono', 'Courier New', Courier, monospace"
 
-type MessageRole = 'user' | 'assistant' | 'error'
+type MessageRole = 'user' | 'assistant' | 'retrieval' | 'error'
 
 interface ChatMessage {
   id: number
@@ -78,11 +79,16 @@ function FrogDoodle() {
   )
 }
 
-export function ChatPanel() {
+interface Props {
+  onQueryMatch?: (ids: string[]) => void
+}
+
+export function ChatPanel({ onQueryMatch }: Props) {
   const [content, setContent] = useState('')
   const [userNote, setUserNote] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
+  const [isQuerying, setIsQuerying] = useState(false)
   const [pending, setPending] = useState<PendingConfirmation | null>(null)
   const savedContents = useRef<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -99,13 +105,6 @@ export function ChatPanel() {
     const trimmedContent = content.trim()
     if (!trimmedContent || loading) return
 
-    if (savedContents.current.has(trimmedContent)) {
-      addMessage('assistant', `already saved this one.`)
-      setContent('')
-      setUserNote('')
-      return
-    }
-
     const displayText = userNote.trim()
       ? `${trimmedContent}\n\n note: ${userNote.trim()}`
       : trimmedContent
@@ -114,6 +113,37 @@ export function ChatPanel() {
     setContent('')
     setUserNote('')
     setLoading(true)
+
+    if (isQuery(trimmedContent)) {
+      setIsQuerying(true)
+      try {
+        const items = await getRecentItems()
+        const itemsForQuery = items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          section: item.section,
+          content: item.content.slice(0, 200),
+        }))
+        const result = await retrieve(trimmedContent, itemsForQuery)
+        addMessage('retrieval', `— ${result.answer}`)
+        if (result.matchedIds.length > 0) {
+          onQueryMatch?.(result.matchedIds)
+        }
+      } catch (err) {
+        console.error(err)
+        addMessage('error', 'search failed. please check your api keys and try again.')
+      } finally {
+        setLoading(false)
+        setIsQuerying(false)
+      }
+      return
+    }
+
+    if (savedContents.current.has(trimmedContent)) {
+      addMessage('assistant', `already saved this one.`)
+      setLoading(false)
+      return
+    }
 
     try {
       const result = await categorizeContent(trimmedContent, userNote.trim())
@@ -206,7 +236,7 @@ export function ChatPanel() {
                 opacity: 0.55,
               }}
             >
-              paste a link, type a note, or describe a task — ai will sort it for you
+              paste a link, type a note, or ask "what did i save?" — ai will sort and find for you
             </p>
           </div>
         )}
@@ -230,8 +260,19 @@ export function ChatPanel() {
                 fontWeight: 300,
                 color: C,
                 opacity: msg.role === 'error' ? 0.45 : 1,
-                border: `1px solid ${msg.role === 'user' ? C : 'rgba(43,43,224,0.35)'}`,
-                background: msg.role === 'assistant' ? 'rgba(43,43,224,0.07)' : 'transparent',
+                border: `1px solid ${
+                  msg.role === 'user'
+                    ? C
+                    : msg.role === 'retrieval'
+                    ? 'rgba(43,43,224,0.55)'
+                    : 'rgba(43,43,224,0.35)'
+                }`,
+                background:
+                  msg.role === 'retrieval'
+                    ? 'rgba(43,43,224,0.11)'
+                    : msg.role === 'assistant'
+                    ? 'rgba(43,43,224,0.07)'
+                    : 'transparent',
                 borderRadius: '3px',
                 padding: '7px 12px',
                 textAlign: 'left',
@@ -309,7 +350,7 @@ export function ChatPanel() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="paste or type anything..."
+          placeholder="paste, type, or ask anything..."
           rows={2}
           disabled={loading}
           style={{
@@ -381,7 +422,13 @@ export function ChatPanel() {
               opacity: loading || !content.trim() ? 0.4 : 1,
             }}
           >
-            {loading ? 'saving...' : 'save →'}
+            {loading
+              ? isQuerying
+                ? 'searching...'
+                : 'saving...'
+              : isQuery(content)
+              ? 'ask →'
+              : 'save →'}
           </button>
         </div>
 
@@ -394,7 +441,7 @@ export function ChatPanel() {
             marginTop: '10px',
           }}
         >
-          enter to save · shift+enter for new line
+          enter to send · shift+enter for new line
         </p>
       </div>
     </div>
