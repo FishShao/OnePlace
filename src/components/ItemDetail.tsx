@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { SavedItem } from '../hooks/useItems'
-import { updateItem } from '../hooks/useItems'
+import { updateItem, deleteItem } from '../hooks/useItems'
 import type { Section } from '../api/claude'
 
 const C = '#2B2BE0'
@@ -46,6 +46,8 @@ export function ItemDetail({ item, onClose, customSections = [] }: Props) {
   )
   const [section, setSection] = useState<string>(item.section)
   const [saving, setSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function handleSave() {
     setSaving(true)
@@ -269,7 +271,86 @@ export function ItemDetail({ item, onClose, customSections = [] }: Props) {
         >
           cancel
         </button>
+        <button
+          onClick={() => setDeleteConfirm(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            fontFamily: FONT,
+            fontSize: '12px',
+            color: C,
+            letterSpacing: '0.12em',
+            fontWeight: 500,
+            opacity: 0.45,
+            marginLeft: 'auto',
+          }}
+        >
+          delete
+        </button>
       </div>
+
+      {deleteConfirm && (
+        <div style={{ marginTop: '16px', display: 'flex', gap: '20px', alignItems: 'center' }}>
+          <span
+            style={{
+              fontSize: '12px',
+              color: C,
+              letterSpacing: '0.08em',
+              fontWeight: 300,
+              opacity: 0.7,
+            }}
+          >
+            delete this item?
+          </span>
+          <button
+            onClick={async () => {
+              setDeleting(true)
+              try {
+                await deleteItem(item.id)
+                onClose()
+              } catch (err) {
+                console.error('delete failed:', err)
+                setDeleting(false)
+                setDeleteConfirm(false)
+              }
+            }}
+            disabled={deleting}
+            style={{
+              background: C,
+              border: `2px solid ${C}`,
+              padding: '5px 18px',
+              cursor: deleting ? 'default' : 'pointer',
+              fontFamily: FONT,
+              fontSize: '12px',
+              color: '#EEF0FF',
+              letterSpacing: '0.12em',
+              fontWeight: 500,
+              opacity: deleting ? 0.45 : 1,
+            }}
+          >
+            {deleting ? 'deleting…' : 'confirm'}
+          </button>
+          <button
+            onClick={() => setDeleteConfirm(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontFamily: FONT,
+              fontSize: '12px',
+              color: C,
+              letterSpacing: '0.12em',
+              fontWeight: 500,
+              opacity: 0.45,
+            }}
+          >
+            cancel
+          </button>
+        </div>
+      )}
     </div>
   )
 }

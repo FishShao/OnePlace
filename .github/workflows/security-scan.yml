@@ -1,0 +1,57 @@
+name: Security scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for hardcoded secrets in source
+        run: |
+          # Fail if any tracked source file contains a real API key value
+          if git grep -rn \
+            -e 'sk-ant-api' \
+            -e 'AIzaSy' \
+            -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.html'; then
+            echo "::error::Potential secret found in source files"
+            exit 1
+          fi
+          echo "No hardcoded secrets found."
+
+      - name: Check that .env files with values are not tracked
+        run: |
+          # .env.local / .env.production / .env (with actual values) must not be tracked
+          TRACKED=$(git ls-files | grep -E '^\.env(\.(local|production|staging|development))?$' || true)
+          if [ -n "$TRACKED" ]; then
+            echo "::error::Secret file(s) tracked by git: $TRACKED"
+            exit 1
+          fi
+          echo "No .env secret files are tracked."
+
+      - name: Scan git history for leaked secrets
+        run: |
+          # Search the full commit history for key patterns
+          if git log --all -p -- '*.ts' '*.tsx' '*.js' '*.env*' \
+            | grep -E 'sk-ant-api|AIzaSy' > /dev/null 2>&1; then
+            echo "::error::Secret pattern found in git history — rotate the key immediately"
+            exit 1
+          fi
+          echo "Git history clean."
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test

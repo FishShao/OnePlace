@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { parseClaudeJson } from '../utils/parseClaudeJson'
 
 export type Section =
   | 'note'
@@ -77,13 +78,7 @@ Use "low" confidence if you are unsure between multiple categories or the conten
     .map((block) => (block as { type: 'text'; text: string }).text)
     .join('')
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error('No JSON found in Claude response')
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]) as CategorizationResult
-  return parsed
+  return parseClaudeJson<CategorizationResult>(text)
 }
 
 export interface RetrievalResult {
@@ -131,8 +126,5 @@ Rules:
     .map((block) => (block as { type: 'text'; text: string }).text)
     .join('')
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('No JSON found in Claude response')
-
-  return JSON.parse(jsonMatch[0]) as RetrievalResult
+  return parseClaudeJson<RetrievalResult>(text)
 }

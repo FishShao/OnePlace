@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { stripUndefined } from '../utils/cleanObject'
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, limit, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -107,9 +108,13 @@ export async function updateItem(
   changes: Partial<Pick<SavedItem, 'content' | 'sourceLabel' | 'section'>>
 ): Promise<void> {
   await updateDoc(doc(db, 'items', itemId), {
-    ...changes,
+    ...stripUndefined(changes),
     updatedAt: serverTimestamp(),
   })
+}
+
+export async function deleteItem(itemId: string): Promise<void> {
+  await deleteDoc(doc(db, 'items', itemId))
 }
 
 export async function checkDuplicate(content: string): Promise<{ isDuplicate: boolean; title: string }> {
